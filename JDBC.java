@@ -1,35 +1,36 @@
-import java.sql.*;
+// ...existing code...
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Statement;
 
 public class JDBC {
     public static void main(String[] args) {
-        String url = "jdbc:mysql://localhost:3306/schooldb"; // Database name
-        String username = "root";  // MySQL username
-        String password = "1234";  // MySQL password
+        String url = System.getenv().getOrDefault("DB_URL", "jdbc:mysql://localhost:3306/schooldb");
+        String username = System.getenv().getOrDefault("DB_USER", "root");
+        String password = System.getenv().getOrDefault("DB_PASS", "1234");
+
+        String driver = null;
+        if (url.startsWith("jdbc:oracle:")) driver = "oracle.jdbc.OracleDriver";
+        else if (url.startsWith("jdbc:mysql:")) driver = "com.mysql.cj.jdbc.Driver";
 
         try {
-            // 1️⃣ Load the MySQL JDBC driver
-            Class.forName("com.mysql.cj.jdbc.Driver");
+            if (driver != null) Class.forName(driver);
 
-            // 2️⃣ Establish the connection
-            Connection con = DriverManager.getConnection(url, username, password);
-            System.out.println("✅ Connected to the database!");
+            try (Connection con = DriverManager.getConnection(url, username, password);
+                 Statement stmt = con.createStatement();
+                 ResultSet rs = stmt.executeQuery("SELECT * FROM students")) {
 
-            // 3️⃣ Create a Statement
-            Statement stmt = con.createStatement();
-
-            // 4️⃣ Execute a Query
-            ResultSet rs = stmt.executeQuery("SELECT * FROM students");
-
-            // 5️⃣ Process Results
-            while (rs.next()) {
-                System.out.println("ID: " + rs.getInt("id") + ", Name: " + rs.getString("name"));
+                System.out.println("Connected to: " + url);
+                while (rs.next()) {
+                    System.out.println("ID: " + rs.getInt("id") + ", Name: " + rs.getString("name"));
+                }
             }
-
-            // 6️⃣ Close connection
-            con.close();
-            System.out.println("🔒 Connection closed.");
-
-        } catch (Exception e) {
+        } catch (ClassNotFoundException e) {
+            System.err.println("JDBC driver class not found for URL: " + url + ". Add the appropriate JDBC JAR to the classpath.");
+        } catch (SQLException e) {
+            System.err.println("SQL error: " + e.getMessage());
             e.printStackTrace();
         }
     }
